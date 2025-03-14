@@ -49,6 +49,9 @@ io.on('connection', (socket) => {
             time: room.lastKnownTime,
             isPlaying: room.isPlaying
         });
+        
+        // Update user count for all clients in the room
+        io.to(roomId).emit('user-count', room.participants.size);
     });
 
     // Optimized video sync events
@@ -104,7 +107,17 @@ io.on('connection', (socket) => {
 
     // Chat messages
     socket.on('chat-message', (data) => {
-        io.to(data.room).emit('chat-message', data.message);
+        if (data && data.room && data.message) {
+            // Broadcast the message to everyone in the room except the sender
+            socket.to(data.room).emit('chat-message', {
+                username: data.username || 'Anonymous',
+                message: data.message,
+                timestamp: data.timestamp || new Date().toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit'
+                })
+            });
+        }
     });
 
     // Cleanup on disconnect
@@ -113,6 +126,10 @@ io.on('connection', (socket) => {
             const room = rooms.get(currentRoom);
             if (room) {
                 room.participants.delete(socket.id);
+                
+                // Update user count for all clients in the room
+                io.to(currentRoom).emit('user-count', room.participants.size);
+                
                 if (room.participants.size === 0) {
                     rooms.delete(currentRoom);
                 }

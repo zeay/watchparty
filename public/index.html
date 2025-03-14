@@ -351,30 +351,6 @@
     </style>
 </head>
 <body>
-    <!-- <div class="container">
-        <div class="room-info">
-            <h2>Room Link:</h2>
-            <p id="roomLink"></p>
-        </div>
-        <div class="main-content">
-            <div class="video-container">
-                <video id="videoPlayer" controls>
-                    <source src="./movie.mp4" type="video/mp4">
-                    Your browser does not support the video element.
-                </video>
-                <div class="buffer-indicator" id="bufferIndicator"></div>
-                <div class="loading" id="loadingIndicator">Buffering...</div>
-            </div>
-            <div class="chat-container">
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input">
-                    <input type="text" id="messageInput" placeholder="Type a message...">
-                    <button onclick="sendMessage()">Send</button>
-                </div>
-            </div>
-        </div>
-    </div> -->
-
     <div class="container">
         <div class="room-info">
             <h2>Room Link</h2>
@@ -392,7 +368,7 @@
             <div class="chat-container">
                 <div class="chat-header">
                     <span class="chat-header-text">Chat Room</span>
-                    <span class="online-badge">1 online</span>
+                    <span class="online-badge" id="onlineCount">1 online</span>
                 </div>
                 <div class="chat-messages" id="chatMessages"></div>
                 <div class="chat-input-wrapper">
@@ -400,6 +376,16 @@
                         <input type="text" id="messageInput" placeholder="Type a message...">
                         <button class="emoji-btn" onclick="toggleEmojiPicker()">😊</button>
                         <button class="send-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+                <div class="emoji-picker" id="emojiPicker" style="display: none;">
+                    <div class="emoji-grid">
+                        <button class="emoji-btn">😀</button>
+                        <button class="emoji-btn">😂</button>
+                        <button class="emoji-btn">❤️</button>
+                        <button class="emoji-btn">👍</button>
+                        <button class="emoji-btn">👏</button>
+                        <button class="emoji-btn">🙏</button>
                     </div>
                 </div>
             </div>
@@ -420,12 +406,14 @@
         const roomLinkElement = document.getElementById('roomLink');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const bufferIndicator = document.getElementById('bufferIndicator');
-
+        const onlineCount = document.getElementById('onlineCount');
+        
         let lastUpdateTime = 0;
         let syncThreshold = 0.5; // Maximum allowed time difference
         let isBuffering = false;
         let isSeeking = false;
         let lastPlaybackRate = 1;
+        let username = 'User' + Math.floor(Math.random() * 1000);
 
         // Room setup
         const roomId = new URLSearchParams(window.location.search).get('room') 
@@ -564,20 +552,18 @@
                 readNextChunk();
             }
         }
-    </script>
-    <script>
+
+        // Chat functionality
         const emojiPicker = document.getElementById('emojiPicker');
-        const onlineCount = document.getElementById('onlineCount');
-        let username = 'User' + Math.floor(Math.random() * 1000);
 
         function toggleEmojiPicker() {
-            // emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+            emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
         }
 
         document.querySelectorAll('.emoji-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 messageInput.value += btn.innerText;
-                // emojiPicker.style.display = 'none';
+                emojiPicker.style.display = 'none';
                 messageInput.focus();
             });
         });
@@ -587,8 +573,8 @@
             if (message) {
                 const messageData = {
                     room: roomId,
-                    message: message,
                     username: username,
+                    message: message,
                     timestamp: new Date().toLocaleTimeString([], { 
                         hour: '2-digit', 
                         minute: '2-digit'
@@ -601,8 +587,7 @@
         }
 
         socket.on('chat-message', (data) => {
-            // Only add message if both username and message are defined
-            if (data.username && data.message) {
+            if (data.username !== username) {
                 addMessage(data, false);
             }
         });
@@ -613,8 +598,7 @@
             
             const messageHeader = document.createElement('div');
             messageHeader.className = 'message-header';
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            messageHeader.textContent = `${data.username} • ${time}`;
+            messageHeader.textContent = `${data.username} • ${data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
             
             const messageContent = document.createElement('div');
             messageContent.className = 'message';
@@ -640,7 +624,7 @@
 
         // Close emoji picker when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.emoji-picker') && !e.target.closest('button')) {
+            if (emojiPicker && !e.target.closest('.emoji-picker') && !e.target.classList.contains('emoji-btn')) {
                 emojiPicker.style.display = 'none';
             }
         });
